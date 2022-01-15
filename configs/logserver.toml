@@ -1,0 +1,12 @@
+# internal
+bind_addr = ":8080"
+log_level = "info"
+
+# mqtt credentials
+mq_user      = ""
+mq_password  = ""
+mq_client_id  = ""
+mq_broker_url = "ssl://mqtt.host:8883"
+
+# sql credentials
+database_url = "host=mqtt.host user=usr password=pass dbname=mqttdata sslmode=disable"
