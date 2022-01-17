@@ -50,8 +50,9 @@ func Start(config *Config) error {
 
 	s := NewServer(store, *config)
 
-	http.ListenAndServe(config.BindAddr, s.router)
-
+	if err = http.ListenAndServe(config.BindAddr, s.router); err != nil {
+		return err
+	}
 	return nil
 }
 

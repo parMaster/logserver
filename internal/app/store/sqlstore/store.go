@@ -6,6 +6,7 @@ import (
 
 	_ "github.com/lib/pq"
 	"github.com/parMaster/logserver/internal/app/model"
+	"github.com/parMaster/logserver/internal/app/store"
 )
 
 type Store struct {
@@ -19,9 +20,12 @@ func NewStore(db *sql.DB) *Store {
 	}
 }
 
-func (m *Store) Read() model.Message {
-
-	return m.messages[0]
+func (m *Store) Read(id int) (*model.Message, error) {
+	elem, ok := m.messages[id]
+	if !ok {
+		return nil, store.ErrRecordNotFound
+	}
+	return &elem, nil
 }
 
 func (m *Store) Write(msg model.Message) int {
