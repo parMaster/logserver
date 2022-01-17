@@ -2,7 +2,6 @@ package sqlstore
 
 import (
 	"database/sql"
-	"time"
 
 	_ "github.com/lib/pq"
 	"github.com/parMaster/logserver/internal/app/model"
@@ -11,32 +10,47 @@ import (
 
 type Store struct {
 	db       *sql.DB
-	messages map[int]model.Message
+	messages map[int]*model.Message
 }
 
 func NewStore(db *sql.DB) *Store {
 	return &Store{
-		db: db,
+		db:       db,
+		messages: make(map[int]*model.Message),
 	}
 }
 
 func (m *Store) Read(id int) (*model.Message, error) {
-	elem, ok := m.messages[id]
-	if !ok {
-		return nil, store.ErrRecordNotFound
+
+	mess := &model.Message{}
+
+	if err := m.db.QueryRow(
+		"SELECT id, dt, topic, message FROM rawdata WHERE id = $1",
+		id,
+	).Scan(
+		&mess.ID,
+		&mess.DateTime,
+		&mess.Topic,
+		&mess.Message,
+	); err != nil {
+		if err == sql.ErrNoRows {
+			return nil, store.ErrRecordNotFound
+		}
+		return nil, err
 	}
-	return &elem, nil
+
+	return mess, nil
 }
 
-func (m *Store) Write(msg model.Message) int {
+func (m *Store) Write(msg model.Message) (int, error) {
 	var id int
 
-	m.db.QueryRow(
+	err := m.db.QueryRow(
 		"INSERT INTO rawdata (dt, topic, message) VALUES ($1, $2, $3) RETURNING id",
-		time.Now().Format("2006.01.02 15:04:05"),
+		msg.DateTime,
 		msg.Topic,
 		msg.Message,
 	).Scan(&id)
 
-	return id
+	return id, err
 }
