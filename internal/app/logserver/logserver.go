@@ -40,7 +40,6 @@ func NewServer(store store.Storer, config Config) *LogServer {
 
 func Start(config *Config) error {
 	db, err := newDB(config.DatabaseURL)
-
 	if err != nil {
 		return err
 	}
@@ -50,7 +49,7 @@ func Start(config *Config) error {
 
 	s := NewServer(store, *config)
 
-	if err = http.ListenAndServe(config.BindAddr, s.router); err != nil {
+	if err := http.ListenAndServe(config.BindAddr, s.router); err != nil {
 		return err
 	}
 	return nil
