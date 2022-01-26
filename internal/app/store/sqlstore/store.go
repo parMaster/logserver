@@ -80,9 +80,10 @@ func (m *Store) CandelizePreviousMinute(sensor string) error {
 	GROUP BY year, month, day, hour, minute, topic
 	ORDER BY year, month, day, hour, minute, topic;`, sensor)
 
-	err := m.db.QueryRow(
-		q,
-	).Err()
+	_, err := m.db.Exec(q)
+	if err != nil {
+		return err
+	}
 
-	return err
+	return nil
 }
