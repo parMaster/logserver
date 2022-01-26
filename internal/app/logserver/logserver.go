@@ -35,7 +35,23 @@ func NewServer(store store.Storer, config Config) *LogServer {
 
 	s.router.HandleFunc("/check", s.HandleCheck())
 
+	go s.CandelizeMinutely()
+
 	return s
+}
+
+func (l *LogServer) CandelizeMinutely() {
+
+	ticker := time.NewTicker(1 * time.Minute)
+	for _ = range ticker.C {
+		l.logger.Logf("Candelizing...")
+		if err := l.store.CandelizePreviousMinute("croco/cave/temperature"); err != nil {
+			l.logger.Logf(err.Error())
+		}
+		if err := l.store.CandelizePreviousMinute("croco/cave/targetTemperature"); err != nil {
+			l.logger.Logf(err.Error())
+		}
+	}
 }
 
 func Start(config *Config) error {
@@ -60,6 +76,8 @@ func newDB(databaseURL string) (*sql.DB, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	db.Query("SET TIMEZONE TO 'Europe/Kiev';")
 
 	if err := db.Ping(); err != nil {
 		return nil, err

@@ -28,3 +28,7 @@ func (m *Store) Write(msg model.Message) (int, error) {
 	m.messages[msg.ID] = &msg
 	return msg.ID, nil
 }
+
+func (m *Store) CandelizePreviousMinute(sensor string) error {
+	return store.ErrPretendToCandelize
+}

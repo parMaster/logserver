@@ -2,6 +2,7 @@ package sqlstore
 
 import (
 	"database/sql"
+	"fmt"
 
 	_ "github.com/lib/pq"
 	"github.com/parMaster/logserver/internal/app/model"
@@ -53,4 +54,35 @@ func (m *Store) Write(msg model.Message) (int, error) {
 	).Scan(&id)
 
 	return id, err
+}
+
+// Calculate temperature candle for previous minute and insert data into tempdata table
+func (m *Store) CandelizePreviousMinute(sensor string) error {
+
+	q := fmt.Sprintf(
+		`INSERT INTO tempdata
+	SELECT 
+		NEXTVAL('tempdata_id_seq') as id, 
+		DATE_PART('year', dt) as year, 
+		DATE_PART('month', dt) as month, 
+		DATE_PART('day', dt) as day, 
+		DATE_PART('hour', dt) as hour, 
+		DATE_PART('minute', dt) as minute, 
+		MIN(message::float)::numeric(10,2) AS min_temp,
+		AVG(message::float)::numeric(10,2) AS avg_temp,
+		MAX(message::float)::numeric(10,2) AS max_temp,
+		'' as strval,
+		topic as sensor
+	FROM rawdata 
+	WHERE 
+		topic = '%s' AND
+		date_trunc('minute', dt) = date_trunc('minute', CURRENT_TIMESTAMP - interval '1 minute')
+	GROUP BY year, month, day, hour, minute, topic
+	ORDER BY year, month, day, hour, minute, topic;`, sensor)
+
+	err := m.db.QueryRow(
+		q,
+	).Err()
+
+	return err
 }

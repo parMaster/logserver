@@ -50,3 +50,14 @@ func TestWriteRead(t *testing.T) {
 	assert.Equal(t, mess.Message, savedMessage.Message)
 
 }
+
+func TestCandelize(t *testing.T) {
+
+	db, _ := sqlstore.TestDB(t, databaseURL)
+	s := sqlstore.NewStore(db)
+
+	err := s.CandelizePreviousMinute("croco/cave/temperature")
+
+	assert.NoError(t, err)
+
+}
