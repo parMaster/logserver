@@ -46,10 +46,10 @@ func (l *LogServer) CandelizeMinutely() {
 	for _ = range ticker.C {
 		l.logger.Logf("Candelizing...")
 		if err := l.store.CandelizePreviousMinute("croco/cave/temperature"); err != nil {
-			l.logger.Logf(err.Error())
+			l.logger.Logf("ERROR %s", err.Error())
 		}
 		if err := l.store.CandelizePreviousMinute("croco/cave/targetTemperature"); err != nil {
-			l.logger.Logf(err.Error())
+			l.logger.Logf("ERROR %s", err.Error())
 		}
 	}
 }
@@ -99,7 +99,7 @@ func (l *LogServer) configureMqClient(config *Config) (*mqtt.Client, error) {
 		return nil, token.Error()
 	}
 
-	if token := c.Subscribe("#", 1, l.HandleMessage); token.Wait() && token.Error() != nil {
+	if token := c.Subscribe("croco/#", 1, l.HandleMessage); token.Wait() && token.Error() != nil {
 		l.logger.Logf("FATAL failed to subscribe: %s", token.Error())
 		return nil, token.Error()
 	}
@@ -109,7 +109,7 @@ func (l *LogServer) configureMqClient(config *Config) (*mqtt.Client, error) {
 
 func (l *LogServer) HandleCheck() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		l.logger.Logf("HandleCheck called")
+		l.logger.Logf("INFO HandleCheck called")
 	}
 }
 
