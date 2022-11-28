@@ -2,12 +2,12 @@ package logserver
 
 import (
 	"database/sql"
+	"log"
 	"net/http"
 	"os"
 	"time"
 
 	mqtt "github.com/eclipse/paho.mqtt.golang"
-	"github.com/go-pkgz/lgr"
 	"github.com/gorilla/mux"
 	"github.com/parMaster/logserver/internal/app/model"
 	"github.com/parMaster/logserver/internal/app/store"
@@ -15,15 +15,14 @@ import (
 )
 
 type LogServer struct {
-	logger *lgr.Logger
 	router *mux.Router
 	mq     *mqtt.Client
 	store  store.Storer
 }
 
 func NewServer(store store.Storer, config Config) *LogServer {
+
 	s := &LogServer{
-		logger: lgr.New(),
 		router: mux.NewRouter(),
 		store:  store,
 	}
@@ -44,12 +43,12 @@ func (l *LogServer) CandelizeMinutely() {
 
 	ticker := time.NewTicker(1 * time.Minute)
 	for _ = range ticker.C {
-		l.logger.Logf("Candelizing...")
+		log.Printf("Candelizing...")
 		if err := l.store.CandelizePreviousMinute("croco/cave/temperature"); err != nil {
-			l.logger.Logf("ERROR %s", err.Error())
+			log.Printf("ERROR %s", err.Error())
 		}
 		if err := l.store.CandelizePreviousMinute("croco/cave/targetTemperature"); err != nil {
-			l.logger.Logf("ERROR %s", err.Error())
+			log.Printf("ERROR %s", err.Error())
 		}
 	}
 }
@@ -61,9 +60,7 @@ func Start(config *Config) error {
 	}
 	defer db.Close()
 
-	store := sqlstore.NewStore(db)
-
-	s := NewServer(store, *config)
+	s := NewServer(sqlstore.NewStore(db), *config)
 
 	if err := http.ListenAndServe(config.BindAddr, s.router); err != nil {
 		return err
@@ -95,26 +92,26 @@ func (l *LogServer) configureMqClient(config *Config) (*mqtt.Client, error) {
 
 	c := mqtt.NewClient(opts)
 	if token := c.Connect(); token.Wait() && token.Error() != nil {
-		l.logger.Logf("FATAL failed to connect to mqtt: %s", token.Error())
+		log.Printf("FATAL failed to connect to mqtt: %s", token.Error())
 		return nil, token.Error()
 	}
 
 	if token := c.Subscribe("croco/#", 1, l.HandleMessage); token.Wait() && token.Error() != nil {
-		l.logger.Logf("FATAL failed to subscribe: %s", token.Error())
+		log.Printf("FATAL failed to subscribe: %s", token.Error())
 		return nil, token.Error()
 	}
-	l.logger.Logf("INFO Successfuly connected to mqtt")
+	log.Printf("INFO Successfuly connected to mqtt")
 	return &c, nil
 }
 
 func (l *LogServer) HandleCheck() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		l.logger.Logf("INFO HandleCheck called")
+		log.Printf("INFO HandleCheck called")
 	}
 }
 
 func (l *LogServer) HandleMessage(client mqtt.Client, msg mqtt.Message) {
-	l.logger.Logf("INFO [%s] \t %s\r\n", msg.Topic(), msg.Payload())
+	log.Printf("INFO [%s] \t %s\r\n", msg.Topic(), msg.Payload())
 
 	if l.store != nil {
 		l.store.Write(model.Message{

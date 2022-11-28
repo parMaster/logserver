@@ -19,6 +19,10 @@ func init() {
 
 func main() {
 
+	logOpts := []lgr.Option{lgr.Debug, lgr.CallerFile, lgr.CallerFunc, lgr.Msec, lgr.LevelBraces, lgr.StackTraceOnError}
+	lgr.SetupStdLogger(logOpts...)
+	lgr.Setup(logOpts...)
+
 	config := logserver.NewConfig()
 	_, err := toml.DecodeFile(configPath, config)
 	if err != nil {
