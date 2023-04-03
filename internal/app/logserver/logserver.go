@@ -1,125 +1,118 @@
 package logserver
 
 import (
-	"database/sql"
+	"context"
+	"encoding/json"
 	"log"
 	"net/http"
-	"os"
 	"time"
 
 	mqtt "github.com/eclipse/paho.mqtt.golang"
-	"github.com/gorilla/mux"
-	"github.com/parMaster/logserver/internal/app/model"
+	"github.com/go-chi/chi/v5"
+	"github.com/parMaster/logserver/config"
 	"github.com/parMaster/logserver/internal/app/store"
-	"github.com/parMaster/logserver/internal/app/store/sqlstore"
 )
 
 type LogServer struct {
-	router *mux.Router
-	mq     *mqtt.Client
+	ctx    context.Context
+	config config.Config
+	mq     mqtt.Client
 	store  store.Storer
 }
 
-func NewServer(store store.Storer, config Config) *LogServer {
-
-	s := &LogServer{
-		router: mux.NewRouter(),
-		store:  store,
+func NewLogServer(ctx context.Context, config config.Config) *LogServer {
+	l := &LogServer{
+		ctx:    ctx,
+		config: config,
 	}
 
+	// Inititalize message queue
 	var err error
-	if s.mq, err = s.configureMqClient(&config); err != nil {
-		os.Exit(1)
-	}
-
-	s.router.HandleFunc("/check", s.HandleCheck())
-
-	go s.CandelizeMinutely()
-
-	return s
-}
-
-func (l *LogServer) CandelizeMinutely() {
-
-	ticker := time.NewTicker(1 * time.Minute)
-	for _ = range ticker.C {
-		log.Printf("Candelizing...")
-		if err := l.store.CandelizePreviousMinute("croco/cave/temperature"); err != nil {
-			log.Printf("ERROR %s", err.Error())
-		}
-		if err := l.store.CandelizePreviousMinute("croco/cave/targetTemperature"); err != nil {
-			log.Printf("ERROR %s", err.Error())
-		}
-	}
-}
-
-func Start(config *Config) error {
-	db, err := newDB(config.DatabaseURL)
+	l.mq, err = l.newMqClient()
 	if err != nil {
-		return err
+		log.Fatalf("Can't configure mqtt client %e", err)
 	}
-	defer db.Close()
 
-	s := NewServer(sqlstore.NewStore(db), *config)
+	// Initialize database
+	err = store.Load(ctx, config, &l.store)
+	if err != nil {
+		log.Fatalf("Can't configure database %e", err)
+	}
 
-	if err := http.ListenAndServe(config.BindAddr, s.router); err != nil {
-		return err
+	// db, err := newDB(config.DatabaseURL)
+	// if err != nil {
+	// 	return err
+	// }
+
+	// go s.CandelizeMinutely()
+
+	return l
+}
+
+func (l *LogServer) newMqClient() (mqtt.Client, error) {
+
+	opts := mqtt.NewClientOptions().AddBroker(l.config.MqBrokerURL)
+	opts.SetUsername(l.config.MqUser)
+	opts.SetPassword(l.config.MqPassword)
+	opts.SetClientID(l.config.MqClientId)
+	opts.SetCleanSession(true)
+
+	c := mqtt.NewClient(opts)
+	if token := c.Connect(); token.Wait() && token.Error() != nil {
+		log.Printf("[ERROR] failed to connect to mqtt: %s", token.Error())
+		return nil, token.Error()
+	}
+
+	// subscribe to root topic and all subtopics
+	if token := c.Subscribe(l.config.MqRootTopic, 1, l.HandleMessage); token.Wait() && token.Error() != nil {
+		log.Printf("[ERROR] failed to subscribe: %s", token.Error())
+		return nil, token.Error()
+	}
+
+	log.Printf("[INFO] Successfuly connected to mqtt")
+	return c, nil
+}
+
+func (l *LogServer) Start() error {
+	httpServer := &http.Server{
+		Addr:              l.config.DatabaseURL,
+		Handler:           l.router(),
+		ReadHeaderTimeout: time.Second,
+		WriteTimeout:      30 * time.Second,
+		IdleTimeout:       time.Second,
+	}
+
+	httpServer.ListenAndServe()
+
+	<-l.ctx.Done()
+	log.Printf("[INFO] Terminating http server")
+
+	if err := httpServer.Close(); err != nil {
+		log.Printf("[ERROR] failed to close http server, %v", err)
 	}
 	return nil
 }
 
-func newDB(databaseURL string) (*sql.DB, error) {
-	db, err := sql.Open("postgres", databaseURL)
-	if err != nil {
-		return nil, err
-	}
+func (l *LogServer) router() http.Handler {
+	router := chi.NewRouter()
 
-	db.Query("SET TIMEZONE TO 'Europe/Kiev';")
+	router.Get("/api/v1/check", l.HandleCheck)
 
-	if err := db.Ping(); err != nil {
-		return nil, err
-	}
-
-	return db, nil
+	return router
 }
 
-func (l *LogServer) configureMqClient(config *Config) (*mqtt.Client, error) {
-
-	opts := mqtt.NewClientOptions().AddBroker(config.MqBrokerURL)
-	opts.SetUsername(config.MqUser)
-	opts.SetPassword(config.MqPassword)
-	opts.SetClientID(config.MqClientId)
-
-	c := mqtt.NewClient(opts)
-	if token := c.Connect(); token.Wait() && token.Error() != nil {
-		log.Printf("FATAL failed to connect to mqtt: %s", token.Error())
-		return nil, token.Error()
-	}
-
-	if token := c.Subscribe("croco/#", 1, l.HandleMessage); token.Wait() && token.Error() != nil {
-		log.Printf("FATAL failed to subscribe: %s", token.Error())
-		return nil, token.Error()
-	}
-	log.Printf("INFO Successfuly connected to mqtt")
-	return &c, nil
-}
-
-func (l *LogServer) HandleCheck() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		log.Printf("INFO HandleCheck called")
+func (l *LogServer) HandleCheck(w http.ResponseWriter, r *http.Request) {
+	log.Printf("GET /api/v1/check")
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	if err := json.NewEncoder(w).Encode(map[string]string{"status": "ok"}); err != nil {
+		log.Printf("[ERROR] %s", err.Error())
 	}
 }
 
 func (l *LogServer) HandleMessage(client mqtt.Client, msg mqtt.Message) {
 	log.Printf("INFO [%s] \t %s\r\n", msg.Topic(), msg.Payload())
 
-	if l.store != nil {
-		l.store.Write(model.Message{
-			ID:       0,
-			DateTime: time.Now().Format("2006.01.02 15:04:05"),
-			Topic:    msg.Topic(),
-			Message:  string(msg.Payload()),
-		})
-	}
+	// parse message and save to database
 
 }

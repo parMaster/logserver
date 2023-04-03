@@ -1,5 +1,7 @@
 package memstore
 
+// TODO: implement the store interface
+
 import (
 	"github.com/parMaster/logserver/internal/app/model"
 	"github.com/parMaster/logserver/internal/app/store"

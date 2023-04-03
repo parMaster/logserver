@@ -1,0 +1,15 @@
+# internal
+bind_addr = ":8088"
+log_level = "info"
+
+# mqtt credentials
+mq_user      = ""
+mq_password  = ""
+mq_client_id  = "logserver_prod"
+mq_broker_url = ""
+mq_root_topic = "#"
+
+database_kind = "sqlite3"
+
+# sqlite3 credentials
+database_url = "file:mqttdata.db?cache=shared&mode=rwc"
