@@ -2,15 +2,20 @@ package logserver
 
 import (
 	"context"
+	_ "embed"
 	"encoding/json"
 	"log"
 	"net/http"
+	"strconv"
+	"strings"
 	"time"
 
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"github.com/go-chi/chi/v5"
 	"github.com/parMaster/logserver/config"
+	"github.com/parMaster/logserver/internal/app/model"
 	"github.com/parMaster/logserver/internal/app/store"
+	"github.com/parMaster/logserver/internal/app/web"
 )
 
 type LogServer struct {
@@ -39,12 +44,7 @@ func NewLogServer(ctx context.Context, config config.Config) *LogServer {
 		log.Fatalf("Can't configure database %e", err)
 	}
 
-	// db, err := newDB(config.DatabaseURL)
-	// if err != nil {
-	// 	return err
-	// }
-
-	// go s.CandelizeMinutely()
+	l.SubscribeAndHandle()
 
 	return l
 }
@@ -63,33 +63,45 @@ func (l *LogServer) newMqClient() (mqtt.Client, error) {
 		return nil, token.Error()
 	}
 
-	// subscribe to root topic and all subtopics
-	if token := c.Subscribe(l.config.MqRootTopic, 1, l.HandleMessage); token.Wait() && token.Error() != nil {
-		log.Printf("[ERROR] failed to subscribe: %s", token.Error())
-		return nil, token.Error()
-	}
-
 	log.Printf("[INFO] Successfuly connected to mqtt")
+
+	go func() {
+		<-l.ctx.Done()
+		log.Printf("[INFO] Terminating mqtt client")
+		c.Disconnect(250)
+	}()
+
 	return c, nil
+}
+
+func (l *LogServer) Subscribe(topic string, handlerFunc mqtt.MessageHandler) {
+	if token := l.mq.Subscribe(topic, 0, handlerFunc); token.Wait() && token.Error() != nil {
+		log.Printf("[ERROR] failed to subscribe to topic %s: %s", topic, token.Error())
+	}
 }
 
 func (l *LogServer) Start() error {
 	httpServer := &http.Server{
-		Addr:              l.config.DatabaseURL,
+		Addr:              l.config.BindAddr,
 		Handler:           l.router(),
 		ReadHeaderTimeout: time.Second,
 		WriteTimeout:      30 * time.Second,
 		IdleTimeout:       time.Second,
 	}
 
+	log.Printf("[INFO] Starting http server on %s", l.config.BindAddr)
+
+	go func() {
+		<-l.ctx.Done()
+		log.Printf("[INFO] Terminating http server")
+
+		if err := httpServer.Close(); err != nil {
+			log.Printf("[ERROR] failed to close http server, %v", err)
+		}
+	}()
+
 	httpServer.ListenAndServe()
 
-	<-l.ctx.Done()
-	log.Printf("[INFO] Terminating http server")
-
-	if err := httpServer.Close(); err != nil {
-		log.Printf("[ERROR] failed to close http server, %v", err)
-	}
 	return nil
 }
 
@@ -97,6 +109,35 @@ func (l *LogServer) router() http.Handler {
 	router := chi.NewRouter()
 
 	router.Get("/api/v1/check", l.HandleCheck)
+
+	router.Get("/web/chart_tpl.min.js", func(rw http.ResponseWriter, r *http.Request) {
+		rw.Write([]byte(web.Chart_tpl_min_js))
+	})
+
+	router.Get("/view", func(rw http.ResponseWriter, r *http.Request) {
+		rw.Write([]byte(web.View_html))
+	})
+
+	router.Get("/viewData/{module}", func(rw http.ResponseWriter, r *http.Request) {
+		if l.store == nil {
+			rw.WriteHeader(http.StatusServiceUnavailable)
+			return
+		}
+		module := chi.URLParam(r, "module")
+		if module == "" {
+			rw.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		rw.Header().Set("Content-Type", "application/json")
+		rw.Header().Set("Access-Control-Allow-Origin", "*")
+		out, err := l.store.View(l.ctx, module)
+		if err != nil {
+			log.Printf("[ERROR] Failed to get view: %v", err)
+			rw.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		json.NewEncoder(rw).Encode(out)
+	})
 
 	return router
 }
@@ -110,9 +151,53 @@ func (l *LogServer) HandleCheck(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (l *LogServer) HandleMessage(client mqtt.Client, msg mqtt.Message) {
-	log.Printf("INFO [%s] \t %s\r\n", msg.Topic(), msg.Payload())
+func (l *LogServer) SubscribeAndHandle() {
+	// Croco cave logs
+	log.Printf("[INFO] Subscribing to croco/cave/#")
+	l.Subscribe("croco/cave/#", func(c mqtt.Client, m mqtt.Message) {
+		log.Printf("DEBUG [%s] \t %s\r\n", m.Topic(), m.Payload())
+		// croco/cave/temperature
+		// croco/cave/targetTemperature
+		// croco/cave/heater
+		// croco/cave/light
 
-	// parse message and save to database
+		topicParts := strings.Split(m.Topic(), "/")
+		switch topicParts[2] {
+		case "temperature":
+			l.store.Write(l.ctx, model.Data{Module: "cave", Topic: "temp", Value: string(m.Payload())})
+		case "targetTemperature":
+			l.store.Write(l.ctx, model.Data{Module: "cave", Topic: "targetTemp", Value: string(m.Payload())})
+		case "heater":
+			l.store.Write(l.ctx, model.Data{Module: "cave", Topic: "heater", Value: string(m.Payload())})
+		case "light":
+			l.store.Write(l.ctx, model.Data{Module: "cave", Topic: "light", Value: string(m.Payload())})
+		}
+
+	})
+
+	// ESP32 probes raw logs
+	l.Subscribe("ESP32-A473F53A7D80/p/ds18b20/#", func(c mqtt.Client, m mqtt.Message) {
+		// ESP32-A473F53A7D80/p/ds18b20/1	23.75
+		// ESP32-A473F53A7D80/p/ds18b20/2	24.00
+		if !l.config.CollectRaw {
+			return
+		}
+
+		topicParts := strings.Split(m.Topic(), "/")
+		if len(topicParts) == 4 && topicParts[3] > "0" {
+			val, err := strconv.ParseFloat(string(m.Payload()), 64)
+			if err != nil {
+				log.Printf("ERROR [%s] \t %s \t %e \r\n", m.Topic(), m.Payload(), err)
+				return
+			}
+			// Ignore invalid values
+			if val < 0 || val > 100 {
+				return
+			}
+
+			log.Printf("DEBUG [%s] \t %s\r\n", m.Topic(), m.Payload())
+			l.store.Write(l.ctx, model.Data{Module: "probes", Topic: "ds18b20" + "/" + topicParts[3], Value: string(m.Payload())})
+		}
+	})
 
 }

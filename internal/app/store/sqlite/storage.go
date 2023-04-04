@@ -14,7 +14,6 @@ import (
 type SQLiteStorage struct {
 	DB            *sql.DB
 	activeModules map[string]bool
-	readOnly      bool
 }
 
 func NewStorage(ctx context.Context, path string) (*SQLiteStorage, error) {
@@ -33,10 +32,6 @@ func NewStorage(ctx context.Context, path string) (*SQLiteStorage, error) {
 }
 
 func (s *SQLiteStorage) Write(ctx context.Context, d model.Data) error {
-
-	if s.readOnly {
-		return errors.New("storage is read-only")
-	}
 
 	if ok, err := s.moduleActive(ctx, d.Module); err != nil || !ok {
 		return err
@@ -103,7 +98,7 @@ func (s *SQLiteStorage) View(ctx context.Context, module string) (data map[strin
 	}
 
 	// select all records from module and fill the map
-	q = fmt.Sprintf("SELECT * FROM `%s` ORDER BY DateTime", module)
+	q = fmt.Sprintf("SELECT DateTime, Topic, AVG(Value) FROM `%s` GROUP BY DateTime, Topic order by DateTime", module)
 	rows, err = s.DB.QueryContext(ctx, q)
 	if err != nil {
 		return nil, err
@@ -132,7 +127,7 @@ func (s *SQLiteStorage) moduleActive(ctx context.Context, module string) (bool, 
 		return true, nil
 	}
 
-	if _, ok := s.activeModules[module]; !ok && !s.readOnly {
+	if _, ok := s.activeModules[module]; !ok {
 		q := fmt.Sprintf("CREATE TABLE IF NOT EXISTS `%s` (DateTime TEXT, Topic TEXT, Value TEXT)", module)
 		_, err := s.DB.ExecContext(ctx, q)
 		if err != nil {
@@ -146,9 +141,6 @@ func (s *SQLiteStorage) moduleActive(ctx context.Context, module string) (bool, 
 
 // Cleanup removes the table for the given module
 func (s *SQLiteStorage) Cleanup(module string) {
-	if s.readOnly {
-		return
-	}
 	q := fmt.Sprintf("DROP TABLE `%s`", module)
 	s.DB.Exec(q)
 	delete(s.activeModules, module)

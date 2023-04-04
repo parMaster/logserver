@@ -11,6 +11,7 @@ type Config struct {
 	MqClientId   string `toml:"mq_client_id"`
 	MqBrokerURL  string `toml:"mq_broker_url"`
 	MqRootTopic  string `toml:"mq_root_topic"`
+	CollectRaw   bool   `toml:"collect_raw"`
 }
 
 // NewConfig ...
@@ -20,3 +21,5 @@ func NewConfig() *Config {
 		LogLevel: "debug",
 	}
 }
+
+// ToDo rewrite to yaml to load modules and configure them

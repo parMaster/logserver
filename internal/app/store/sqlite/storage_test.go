@@ -86,7 +86,7 @@ func Test_SqliteStorage_View(t *testing.T) {
 	defer cancel()
 
 	var err error
-	store, err := NewStorage(ctx, "file:test_view.db?cache=shared&mode=rwc")
+	store, err := NewStorage(ctx, "file:test_view.db?mode=rwc")
 	if err != nil {
 		log.Printf("[ERROR] Failed to open SQLite storage: %e", err)
 	}
@@ -132,12 +132,19 @@ func Test_SqliteStorage_readOnly(t *testing.T) {
 	defer cancel()
 
 	var err error
-	store, err := NewStorage(ctx, "file:test_ro.db?cache=shared&mode=rc")
+	store, err := NewStorage(ctx, "file:test_view.db?mode=ro")
 	if err != nil {
 		log.Printf("[ERROR] Failed to open SQLite storage: %e", err)
 	}
 
 	err = store.Write(ctx, model.Data{Module: "testModule", Topic: "testTopic", Value: "testValue"})
 	assert.Error(t, err)
-	assert.Equal(t, "storage is read-only", err.Error())
+	assert.Equal(t, "attempt to write a readonly database", err.Error())
+
+	s, err := NewStorage(ctx, "file:test_notcreated.db?mode=ro")
+	assert.NotNil(t, s)
+	assert.NoError(t, err)
+	err = s.Write(ctx, model.Data{Module: "testModule", Topic: "testTopic", Value: "testValue"})
+	assert.Error(t, err)
+	assert.Equal(t, "unable to open database file: no such file or directory", err.Error())
 }

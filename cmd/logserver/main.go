@@ -19,19 +19,22 @@ var (
 )
 
 func init() {
-	flag.StringVar(&configPath, "config-path", "configs/logserver.toml", "path to config file")
+	flag.StringVar(&configPath, "config", "config/logserver.toml", "path to config file")
 }
 
 func main() {
-	logOpts := []lgr.Option{lgr.Debug, lgr.CallerFile, lgr.CallerFunc, lgr.Msec, lgr.LevelBraces, lgr.StackTraceOnError}
-	lgr.SetupStdLogger(logOpts...)
-
 	config := config.NewConfig()
 	_, err := toml.DecodeFile(configPath, config)
 	if err != nil {
 		log.Fatalf(err.Error())
 		os.Exit(1)
 	}
+
+	logOpts := []lgr.Option{lgr.LevelBraces, lgr.StackTraceOnError}
+	if config.LogLevel == "debug" {
+		logOpts = append(logOpts, lgr.Debug)
+	}
+	lgr.SetupStdLogger(logOpts...)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	go func() {
