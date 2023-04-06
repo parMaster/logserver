@@ -1,18 +1,18 @@
 # internal
 bind_addr = ":8088"
-log_level = "debug"
+log_level = "info"
 
 # mqtt credentials
-mq_user      = "gusto"
+mq_user      = ""
 mq_password  = ""
 mq_client_id  = "logserver_prod"
-mq_broker_url = "ssl://mqtt.server"
+mq_broker_url = "ssl://mqtt.example.com:8883"
 mq_root_topic = "#"
 
 database_kind = "sqlite"
 
 # sqlite3 credentials
-database_url = "file:mqttdata.db?mode=rwc"
+database_url = "file:/etc/logserver/mqttdata.db?mode=rwc"
 
 # raw sensor data could be expensive to store
 collect_raw = false

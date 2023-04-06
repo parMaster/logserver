@@ -18,11 +18,9 @@ var (
 	configPath string
 )
 
-func init() {
-	flag.StringVar(&configPath, "config", "config/logserver.toml", "path to config file")
-}
-
 func main() {
+	flag.StringVar(&configPath, "config", "config/logserver.toml", "path to config file")
+	flag.Parse()
 	config := config.NewConfig()
 	_, err := toml.DecodeFile(configPath, config)
 	if err != nil {
