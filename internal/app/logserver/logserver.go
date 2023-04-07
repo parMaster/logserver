@@ -31,20 +31,18 @@ func NewLogServer(ctx context.Context, config config.Config) *LogServer {
 		config: config,
 	}
 
-	// Inititalize message queue
-	var err error
-	l.mq, err = l.newMqClient()
-	if err != nil {
-		log.Fatalf("Can't configure mqtt client %e", err)
-	}
-
 	// Initialize database
+	var err error
 	err = store.Load(ctx, config, &l.store)
 	if err != nil {
 		log.Fatalf("Can't configure database %e", err)
 	}
 
-	l.SubscribeAndHandle()
+	// Inititalize message queue
+	l.mq, err = l.newMqClient()
+	if err != nil {
+		log.Fatalf("Can't configure mqtt client %e", err)
+	}
 
 	return l
 }
@@ -56,14 +54,28 @@ func (l *LogServer) newMqClient() (mqtt.Client, error) {
 	opts.SetPassword(l.config.MqPassword)
 	opts.SetClientID(l.config.MqClientId)
 	opts.SetCleanSession(true)
+	opts.SetAutoReconnect(true)
+	opts.SetMaxReconnectInterval(1 * time.Second)
+	opts.SetResumeSubs(true)
+
+	opts.SetOnConnectHandler(func(c mqtt.Client) {
+		log.Printf("[INFO] Connected to mqtt broker %s as %s", l.config.MqBrokerURL, l.config.MqClientId)
+		l.SubscribeAndHandle()
+	})
+
+	opts.SetConnectionLostHandler(func(c mqtt.Client, err error) {
+		log.Printf("[ERROR] Connection to mqtt broker lost: %s", err)
+	})
+
+	opts.SetReconnectingHandler(func(c mqtt.Client, opts *mqtt.ClientOptions) {
+		log.Printf("[INFO] Reconnecting to mqtt broker %s as %s", l.config.MqBrokerURL, l.config.MqClientId)
+	})
 
 	c := mqtt.NewClient(opts)
 	if token := c.Connect(); token.Wait() && token.Error() != nil {
 		log.Printf("[ERROR] failed to connect to mqtt: %s", token.Error())
 		return nil, token.Error()
 	}
-
-	log.Printf("[INFO] Successfuly connected to mqtt")
 
 	go func() {
 		<-l.ctx.Done()
