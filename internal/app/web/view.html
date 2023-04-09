@@ -20,6 +20,8 @@
 <script>
 
 let template = templateDark;
+var tempsDiv = document.getElementById('temps');
+var lightheatDiv = document.getElementById('light_heat');
 
 async function getData(module) {
     let url = '/viewData/'+module;
@@ -85,7 +87,7 @@ async function loadCave() {
 		}
 		plots.push(targetTemp);
 	}
-	Plotly.newPlot('temps', plots, MainLayout);
+	Plotly.newPlot(tempsDiv, plots, MainLayout);
 
 
 	lightheatplot = [];
@@ -140,7 +142,12 @@ async function loadCave() {
 		}
 		lightheatplot.push(light);
 	}
-	Plotly.newPlot('light_heat', lightheatplot, LightHeatLayout);
+	Plotly.newPlot(lightheatDiv, lightheatplot, LightHeatLayout);
+
+	tempsDiv.on('plotly_relayout', function(eventdata){
+		Plotly.relayout(lightheatDiv, eventdata);
+	});
+
 }
 
 async function loadCharts() {
