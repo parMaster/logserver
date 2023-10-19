@@ -1,4 +1,4 @@
-go build -v ./cmd/logserver
+go build -v ./app/...
 @echo off
 
 IF "%1"=="run" GOTO RUN

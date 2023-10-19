@@ -1,6 +1,6 @@
 # internal
 bind_addr = ":8088"
-log_level = "info"
+log_level = "debug"
 
 # mqtt credentials
 mq_user      = ""

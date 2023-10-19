@@ -1,5 +1,9 @@
 package config
 
+import (
+	"github.com/BurntSushi/toml"
+)
+
 // Config ...
 type Config struct {
 	BindAddr     string `toml:"bind_addr"`
@@ -15,11 +19,15 @@ type Config struct {
 }
 
 // NewConfig ...
-func NewConfig() *Config {
-	return &Config{
+func NewConfig(filepath string) (*Config, error) {
+	c := Config{
 		BindAddr: ":8080",
 		LogLevel: "debug",
 	}
+
+	_, err := toml.DecodeFile(filepath, &c)
+
+	return &c, err
 }
 
 // ToDo rewrite to yaml to load modules and configure them

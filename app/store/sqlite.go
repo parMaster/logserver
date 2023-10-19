@@ -1,4 +1,4 @@
-package sqlite
+package store
 
 import (
 	"context"
@@ -8,15 +8,15 @@ import (
 	"time"
 
 	_ "github.com/mattn/go-sqlite3"
-	"github.com/parMaster/logserver/internal/app/model"
 )
 
 type SQLiteStorage struct {
 	DB            *sql.DB
+	ctx           context.Context
 	activeModules map[string]bool
 }
 
-func NewStorage(ctx context.Context, path string) (*SQLiteStorage, error) {
+func NewSQLite(ctx context.Context, path string) (*SQLiteStorage, error) {
 
 	sqliteDatabase, err := sql.Open("sqlite3", path)
 	if err != nil {
@@ -28,12 +28,12 @@ func NewStorage(ctx context.Context, path string) (*SQLiteStorage, error) {
 		sqliteDatabase.Close()
 	}()
 
-	return &SQLiteStorage{DB: sqliteDatabase, activeModules: make(map[string]bool)}, nil
+	return &SQLiteStorage{DB: sqliteDatabase, ctx: ctx, activeModules: make(map[string]bool)}, nil
 }
 
-func (s *SQLiteStorage) Write(ctx context.Context, d model.Data) error {
+func (s *SQLiteStorage) Write(d Data) error {
 
-	if ok, err := s.moduleActive(ctx, d.Module); err != nil || !ok {
+	if ok, err := s.moduleActive(d.Module); err != nil || !ok {
 		return err
 	}
 
@@ -47,22 +47,22 @@ func (s *SQLiteStorage) Write(ctx context.Context, d model.Data) error {
 
 	q := fmt.Sprintf("INSERT INTO `%s` VALUES ($1, $2, $3)", d.Module)
 
-	_, err := s.DB.ExecContext(ctx, q, d.DateTime, d.Topic, d.Value)
+	_, err := s.DB.ExecContext(s.ctx, q, d.DateTime, d.Topic, d.Value)
 	return err
 }
 
 // Read reads records for the given module from the database
-func (s *SQLiteStorage) Read(ctx context.Context, module string) (data []model.Data, err error) {
+func (s *SQLiteStorage) Read(module string) (data []Data, err error) {
 
 	q := fmt.Sprintf("SELECT * FROM `%s`", module)
-	rows, err := s.DB.QueryContext(ctx, q)
+	rows, err := s.DB.QueryContext(s.ctx, q)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
 	for rows.Next() {
-		d := model.Data{Module: module}
+		d := Data{Module: module}
 		err = rows.Scan(&d.DateTime, &d.Topic, &d.Value)
 		if err != nil {
 			return nil, err
@@ -76,13 +76,13 @@ func (s *SQLiteStorage) Read(ctx context.Context, module string) (data []model.D
 // View returns a map of topics and their values for the given module
 // The map is sorted by DateTime and structured as follows:
 // map[Topic]map[DateTime]Value
-func (s *SQLiteStorage) View(ctx context.Context, module string) (data map[string]map[string]string, err error) {
+func (s *SQLiteStorage) View(module string) (data map[string]map[string]string, err error) {
 
 	data = make(map[string]map[string]string)
 
 	// select distinct topics from module
 	q := fmt.Sprintf("SELECT DISTINCT Topic FROM `%s`", module)
-	rows, err := s.DB.QueryContext(ctx, q)
+	rows, err := s.DB.QueryContext(s.ctx, q)
 	if err != nil {
 		return nil, err
 	}
@@ -99,13 +99,13 @@ func (s *SQLiteStorage) View(ctx context.Context, module string) (data map[strin
 
 	// select all records from module and fill the map
 	q = fmt.Sprintf("SELECT DateTime, Topic, AVG(Value) FROM `%s` GROUP BY DateTime, Topic order by DateTime", module)
-	rows, err = s.DB.QueryContext(ctx, q)
+	rows, err = s.DB.QueryContext(s.ctx, q)
 	if err != nil {
 		return nil, err
 	}
 
 	for rows.Next() {
-		d := model.Data{Module: module}
+		d := Data{Module: module}
 		err = rows.Scan(&d.DateTime, &d.Topic, &d.Value)
 		if err != nil {
 			return nil, err
@@ -117,7 +117,7 @@ func (s *SQLiteStorage) View(ctx context.Context, module string) (data map[strin
 }
 
 // Check if the table exists, create if not. Cache the result in the map
-func (s *SQLiteStorage) moduleActive(ctx context.Context, module string) (bool, error) {
+func (s *SQLiteStorage) moduleActive(module string) (bool, error) {
 
 	if module == "" {
 		return false, errors.New("module name is empty")
@@ -129,7 +129,7 @@ func (s *SQLiteStorage) moduleActive(ctx context.Context, module string) (bool, 
 
 	if _, ok := s.activeModules[module]; !ok {
 		q := fmt.Sprintf("CREATE TABLE IF NOT EXISTS `%s` (DateTime TEXT, Topic TEXT, Value TEXT)", module)
-		_, err := s.DB.ExecContext(ctx, q)
+		_, err := s.DB.ExecContext(s.ctx, q)
 		if err != nil {
 			return false, err
 		}

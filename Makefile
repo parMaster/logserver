@@ -1,21 +1,25 @@
+# get current user name
+USER=$(shell whoami)
+# get current user group
+GROUP=$(shell id -gn)
+
 .PHONY: build run test deploy status remove
 build:
-	go build -v ./cmd/logserver
+	cd app; go build -v -o ../logserver; cd ..
 
-run: 
-	go build -v ./cmd/logserver
-	./logserver
+run: build
+	- ./logserver
 
 test:
 	go test -v ./...
 
-deploy:
-	make build
+deploy: build
 	- sudo systemctl stop logserver.service || true
 	sudo cp logserver /usr/bin/
+	sed -i "s/%USER%/$(USER)/g" logserver.service
 	sudo cp logserver.service /etc/systemd/system/
 	sudo mkdir -p /etc/logserver
-	sudo chown pi:pi /etc/logserver
+	sudo chown ${USER}:${GROUP} /etc/logserver
 	sudo cp config/logserver.toml /etc/logserver/
 	sudo systemctl daemon-reload
 	sudo systemctl enable logserver.service
