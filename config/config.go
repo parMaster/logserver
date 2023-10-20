@@ -21,11 +21,14 @@ type Config struct {
 // NewConfig ...
 func NewConfig(filepath string) (*Config, error) {
 	c := Config{
-		BindAddr: ":8080",
-		LogLevel: "debug",
+		BindAddr: ":8080", // default bind address
+		LogLevel: "debug", // default log level
 	}
 
 	_, err := toml.DecodeFile(filepath, &c)
+	if err != nil {
+		return nil, err
+	}
 
 	return &c, err
 }

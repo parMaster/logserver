@@ -40,6 +40,11 @@ type Storer interface {
 func Load(ctx context.Context, cfg config.Config, s *Storer) error {
 	var err error
 	switch cfg.DatabaseKind {
+	case "bolt":
+		*s, err = NewBolt(ctx, cfg.DatabaseURL)
+		if err != nil {
+			return fmt.Errorf("failed to init SQLite storage: %e", err)
+		}
 	case "sqlite":
 		*s, err = NewSQLite(ctx, cfg.DatabaseURL)
 		if err != nil {

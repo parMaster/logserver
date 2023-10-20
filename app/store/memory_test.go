@@ -7,25 +7,41 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestWriteRead(t *testing.T) {
+func Test_Memory_Store(t *testing.T) {
+
 	s := NewMemoryStore()
 
-	mess := Message{
-		ID:       1,
+	// Read empty
+	emptyMessages, emptyErr := s.Read("Test Module")
+	assert.Error(t, emptyErr)
+	assert.Empty(t, emptyMessages)
+	assert.ErrorIs(t, emptyErr, ErrRecordNotFound)
+
+	// Write
+	testData := Data{
+		Module:   "Test Module",
 		DateTime: "2022-01-02 03:04:05",
 		Topic:    "Test Topic",
-		Message:  "Test Message",
+		Value:    "Test Value",
 	}
-
-	id, err := s.Write(mess)
+	err := s.Write(testData)
 	assert.NoError(t, err)
-	assert.Equal(t, 1, id)
 
-	savedMessage, readErr := s.Read(id)
+	// Read
+	savedMessages, readErr := s.Read("Test Module")
 	assert.NoError(t, readErr)
-	assert.Equal(t, &mess, savedMessage)
+	assert.NotEmpty(t, savedMessages)
+	assert.Equal(t, testData, savedMessages[0])
 
-	id, err = s.Write(mess)
-	assert.NoError(t, err)
-	assert.Equal(t, 2, id)
+	// Read not found
+	noSuchBucketMessages, noSuchBucketErr := s.Read("No Such Bucket")
+	assert.Error(t, noSuchBucketErr)
+	assert.Empty(t, noSuchBucketMessages)
+	assert.ErrorIs(t, noSuchBucketErr, ErrRecordNotFound)
+
+	// View
+	viewMessages, viewErr := s.View("Test Module")
+	assert.NoError(t, viewErr)
+	assert.NotEmpty(t, viewMessages)
+	assert.Equal(t, testData.Value, viewMessages[testData.Topic][testData.DateTime])
 }

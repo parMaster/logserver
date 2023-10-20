@@ -3,29 +3,53 @@ package store
 // TODO: implement the store interface
 
 type Store struct {
-	messages map[int]*Message
+	// memory store
+	// key is the module and Bolt bucket name
+	// value is the slice of Data
+	data map[string][]Data
 }
 
 func NewMemoryStore() *Store {
 	return &Store{
-		messages: make(map[int]*Message),
+		data: make(map[string][]Data),
 	}
 }
 
-func (m *Store) Read(id int) (*Message, error) {
-	elem, ok := m.messages[id]
-	if !ok {
+// Implement the Storer interface
+
+// Read reads records for the given module from the database
+func (s *Store) Read(module string) (data []Data, err error) {
+	if _, ok := s.data[module]; !ok {
 		return nil, ErrRecordNotFound
 	}
-	return elem, nil
+	return s.data[module], nil
 }
 
-func (m *Store) Write(msg Message) (int, error) {
-	msg.ID = len(m.messages) + 1
-	m.messages[msg.ID] = &msg
-	return msg.ID, nil
+// Write writes the data to the database
+func (s *Store) Write(data Data) error {
+	if _, ok := s.data[data.Module]; !ok {
+		s.data[data.Module] = []Data{}
+	}
+	s.data[data.Module] = append(s.data[data.Module], data)
+	return nil
 }
 
-func (m *Store) CandelizePreviousMinute(sensor string) error {
-	return ErrPretendToCandelize
+// View returns a map of topics and their values for the given module
+// The map is sorted by DateTime and structured as follows:
+// map[Topic]map[DateTime]Value
+func (s *Store) View(module string) (data map[string]map[string]string, err error) {
+
+	data = make(map[string]map[string]string)
+
+	// select distinct topics from module
+	for _, d := range s.data[module] {
+		data[d.Topic] = make(map[string]string)
+	}
+
+	// select all records from module and fill the map
+	for _, d := range s.data[module] {
+		data[d.Topic][d.DateTime] = d.Value
+	}
+
+	return
 }
