@@ -4,8 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 
+	log "github.com/go-pkgz/lgr"
 	"github.com/parMaster/logserver/config"
 )
 

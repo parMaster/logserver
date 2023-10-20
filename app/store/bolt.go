@@ -4,8 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"time"
+
+	log "github.com/go-pkgz/lgr"
 
 	bolt "go.etcd.io/bbolt"
 )
@@ -107,6 +108,18 @@ func (b *Bolt) View(module string) (data map[string]map[string]string, err error
 
 	data = make(map[string]map[string]string)
 
+	// Get all the records from the bucket module
+	records, err := b.Read(module)
+	if err != nil {
+		return nil, err
+	}
+	for _, d := range records {
+		if _, ok := data[d.Topic]; !ok {
+			data[d.Topic] = make(map[string]string)
+		}
+		data[d.Topic][d.DateTime] = d.Value
+	}
+
 	return
 }
 
@@ -134,8 +147,8 @@ func (b *Bolt) moduleActive(module string) (bool, error) {
 		if err != nil {
 			return false, err
 		}
-
 		b.activeModules[module] = true
+		log.Printf("[DEBUG] BoltDB bucket created: %s", module)
 	}
 
 	return true, nil
