@@ -9,10 +9,13 @@ mq_client_id  = "logserver_prod"
 mq_broker_url = "ssl://mqtt.example.com:8883"
 mq_root_topic = "#"
 
-database_kind = "sqlite"
-
 # sqlite3 credentials
-database_url = "file:/etc/logserver/mqttdata.db?mode=rwc"
+# database_kind = "sqlite"
+# database_url = "file:./app/store/mqttdata.db?mode=rwc"
+
+# bolt credentials
+database_kind = "bolt"
+database_url = "/etc/logserver/mqttdata.bolt"
 
 # raw sensor data could be expensive to store
 collect_raw = false
