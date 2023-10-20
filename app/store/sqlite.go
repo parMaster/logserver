@@ -98,7 +98,7 @@ func (s *SQLiteStorage) View(module string) (data map[string]map[string]string, 
 	}
 
 	// select all records from module and fill the map
-	q = fmt.Sprintf("SELECT DateTime, Topic, AVG(Value) FROM `%s` GROUP BY DateTime, Topic order by DateTime", module)
+	q = fmt.Sprintf("SELECT DateTime, Topic, ROUND(AVG(Value), 2) FROM `%s` GROUP BY DateTime, Topic order by DateTime", module)
 	rows, err = s.DB.QueryContext(s.ctx, q)
 	if err != nil {
 		return nil, err
