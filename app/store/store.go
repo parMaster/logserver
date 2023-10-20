@@ -21,13 +21,6 @@ type Data struct {
 	Value    string
 }
 
-type Message struct {
-	ID       int
-	DateTime string
-	Topic    string
-	Message  string
-}
-
 type Storer interface {
 	// Read reads records for the given module from the database.
 	Read(string) ([]Data, error)
