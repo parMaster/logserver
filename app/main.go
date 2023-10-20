@@ -9,7 +9,7 @@ import (
 	"syscall"
 
 	"github.com/go-pkgz/lgr"
-	"github.com/parMaster/logserver/app/logserver"
+	"github.com/parMaster/logserver/app/server"
 	"github.com/parMaster/logserver/config"
 )
 
@@ -46,7 +46,7 @@ func main() {
 		cancel()
 	}()
 
-	if err := logserver.NewLogServer(ctx, *config).Start(); err != nil {
+	if err := server.NewLogServer(ctx, *config).Start(); err != nil {
 		log.Fatalf("Can't start logserver %e", err)
 	}
 }
