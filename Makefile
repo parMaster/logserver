@@ -1,3 +1,8 @@
+B=$(shell git rev-parse --abbrev-ref HEAD)
+BRANCH=$(subst /,-,$(B))
+GITREV=$(shell git describe --abbrev=7 --always --tags)
+REV=$(GITREV)-$(BRANCH)-$(shell date +%Y%m%d)
+
 # get current user name
 USER=$(shell whoami)
 # get current user group
@@ -5,13 +10,18 @@ GROUP=$(shell id -gn)
 
 .PHONY: build run test deploy status remove
 build:
-	cd app; go build -v -o ../logserver; cd ..
+	- cd app; go build -v -o ../logserver; cd ..
+	- make info
 
 run: build
 	- ./logserver
 
 test:
 	go test -v ./...
+
+info:
+	- @echo "revision $(REV)"
+	- @echo "branch $(BRANCH)"
 
 deploy: build
 	- sudo systemctl stop logserver.service || true
