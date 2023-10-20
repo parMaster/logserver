@@ -10,14 +10,17 @@ import (
 
 	"github.com/go-pkgz/lgr"
 	"github.com/parMaster/logserver/app/server"
+	"github.com/parMaster/logserver/app/store"
 	"github.com/parMaster/logserver/config"
 )
 
 var (
 	configPath string
+	cmd        string
 )
 
 func main() {
+	flag.StringVar(&cmd, "cmd", "", "command to run (server, migrate)")
 	flag.StringVar(&configPath, "config", "config/logserver.toml", "path to config file")
 	flag.Parse()
 	config, err := config.NewConfig(configPath)
@@ -46,7 +49,13 @@ func main() {
 		cancel()
 	}()
 
-	if err := server.NewLogServer(ctx, *config).Start(); err != nil {
-		log.Fatalf("Can't start logserver %e", err)
+	switch cmd {
+	case "migrate":
+		store.Migrate(ctx)
+	case "server":
+	default:
+		if err := server.NewLogServer(ctx, *config).Start(); err != nil {
+			log.Fatalf("Can't start logserver %e", err)
+		}
 	}
 }

@@ -77,8 +77,6 @@ func (b *Bolt) Write(data Data) error {
 		return fmt.Errorf("topic is empty")
 	}
 
-	key := data.Topic + "-" + data.DateTime
-
 	err := b.db.Update(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte(data.Module))
 		if b == nil {
@@ -90,13 +88,13 @@ func (b *Bolt) Write(data Data) error {
 			return jerr
 		}
 
-		return b.Put([]byte(key), jdata)
+		return b.Put([]byte(data.Topic+"-"+data.DateTime), jdata)
 	})
 	if err != nil {
 		return err
 	}
 
-	log.Printf("[DEBUG] BoltDB saved to [%s]: key: %s,\t v: %s", data.Module, key, data)
+	// log.Printf("[DEBUG] BoltDB saved to [%s]: key: %s,\t v: %s", data.Module, key, data)
 
 	return nil
 }
