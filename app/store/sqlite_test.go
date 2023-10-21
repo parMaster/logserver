@@ -103,12 +103,12 @@ func Test_SqliteStorage_View(t *testing.T) {
 	}
 
 	records := []Data{
-		{Module: "view", DateTime: "2022-03-30 00:00", Topic: "temp", Value: "36000"},
-		{Module: "view", DateTime: "2022-03-30 00:01", Topic: "temp", Value: "36100"},
-		{Module: "view", DateTime: "2022-03-30 00:02", Topic: "temp", Value: "36200"},
-		{Module: "view", DateTime: "2022-03-30 00:00", Topic: "rpm", Value: "100"},
-		{Module: "view", DateTime: "2022-03-30 00:01", Topic: "rpm", Value: "200"},
-		{Module: "view", DateTime: "2022-03-30 00:02", Topic: "rpm", Value: "300"},
+		{Module: "view", DateTime: time.Now().Format("2006-01-02") + " 00:00", Topic: "temp", Value: "36000"},
+		{Module: "view", DateTime: time.Now().Format("2006-01-02") + " 00:01", Topic: "temp", Value: "36100"},
+		{Module: "view", DateTime: time.Now().Format("2006-01-02") + " 00:02", Topic: "temp", Value: "36200"},
+		{Module: "view", DateTime: time.Now().Format("2006-01-02") + " 00:00", Topic: "rpm", Value: "100"},
+		{Module: "view", DateTime: time.Now().Format("2006-01-02") + " 00:01", Topic: "rpm", Value: "200"},
+		{Module: "view", DateTime: time.Now().Format("2006-01-02") + " 00:02", Topic: "rpm", Value: "300"},
 	}
 
 	for _, r := range records {
@@ -120,14 +120,14 @@ func Test_SqliteStorage_View(t *testing.T) {
 
 	viewExpected := map[string]map[string]string{
 		"temp": {
-			"2022-03-30 00:00": "36000",
-			"2022-03-30 00:01": "36100",
-			"2022-03-30 00:02": "36200",
+			time.Now().Format("2006-01-02") + " 00:00": "36000",
+			time.Now().Format("2006-01-02") + " 00:01": "36100",
+			time.Now().Format("2006-01-02") + " 00:02": "36200",
 		},
 		"rpm": {
-			"2022-03-30 00:00": "100",
-			"2022-03-30 00:01": "200",
-			"2022-03-30 00:02": "300",
+			time.Now().Format("2006-01-02") + " 00:00": "100",
+			time.Now().Format("2006-01-02") + " 00:01": "200",
+			time.Now().Format("2006-01-02") + " 00:02": "300",
 		},
 	}
 

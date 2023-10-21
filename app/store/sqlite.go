@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"log"
 	"time"
 
 	_ "github.com/mattn/go-sqlite3"
@@ -100,7 +99,6 @@ func (s *SQLiteStorage) View(module string) (data map[string]map[string]string, 
 
 	// select all records from module and fill the map
 	q = fmt.Sprintf("SELECT DateTime, Topic, ROUND(AVG(Value), 2) FROM `%s` WHERE DateTime > '%s' GROUP BY DateTime, Topic order by DateTime", module, time.Now().AddDate(0, -3, 0).Format("2006-01-02 15:04"))
-	log.Printf("[DEBUG] view query: %s", q)
 	rows, err = s.DB.QueryContext(s.ctx, q)
 	if err != nil {
 		return nil, err
