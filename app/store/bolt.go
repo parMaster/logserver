@@ -17,6 +17,7 @@ type Bolt struct {
 	ctx context.Context
 }
 
+// NewBolt creates a new BoltDB storage instance
 func NewBolt(ctx context.Context, dbFile string) (b *Bolt, err error) {
 
 	db, err := bolt.Open(dbFile, 0600, &bolt.Options{Timeout: 1 * time.Second}) // nolint
@@ -32,6 +33,7 @@ func NewBolt(ctx context.Context, dbFile string) (b *Bolt, err error) {
 	return &Bolt{db: db, ctx: ctx}, nil
 }
 
+// Read returns all the records from the given module
 func (b *Bolt) Read(module string) ([]Data, error) {
 
 	result := []Data{}
@@ -62,6 +64,8 @@ func (b *Bolt) Read(module string) ([]Data, error) {
 	return result, nil
 }
 
+// Write saves the given data to the storage. The data is saved in a bucket named after the module.
+// If the DateTime is empty, it will be set to the current time
 func (b *Bolt) Write(data Data) error {
 
 	if data.DateTime == "" {
@@ -96,8 +100,7 @@ func (b *Bolt) Write(data Data) error {
 }
 
 // View returns a map of topics and their values for the given module
-// The map is sorted by DateTime and structured as follows:
-// map[Topic]map[DateTime]Value
+// The map is sorted by DateTime and structured as follows: map[Topic]map[DateTime]Value
 func (b *Bolt) View(module string) (data map[string]map[string]string, err error) {
 
 	data = make(map[string]map[string]string)
