@@ -9,8 +9,8 @@ import (
 
 	"github.com/go-pkgz/lgr"
 
+	"github.com/parMaster/logserver/app/api"
 	"github.com/parMaster/logserver/app/config"
-	"github.com/parMaster/logserver/app/server"
 	"github.com/parMaster/logserver/app/store"
 	"github.com/umputun/go-flags"
 )
@@ -54,9 +54,13 @@ func main() {
 	switch Options.Cmd {
 	case "migrate":
 		store.Migrate(ctx)
-	case "server":
+	case "service":
+		RunService(ctx, *config)
 	default:
-		if err := server.NewLogServer(ctx, *config).Start(); err != nil {
+
+		go RunService(ctx, *config)
+
+		if err := api.NewApiServer(ctx, *config).Start(); err != nil {
 			log.Fatalf("Can't start logserver %e", err)
 		}
 	}

@@ -1,4 +1,4 @@
-package server
+package api
 
 import (
 	"context"
@@ -8,43 +8,41 @@ import (
 	"net/http"
 	"time"
 
-	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"github.com/go-chi/chi/v5"
 	"github.com/parMaster/logserver/app/config"
 	"github.com/parMaster/logserver/app/store"
 	"github.com/parMaster/logserver/app/web"
 )
 
-type LogServer struct {
+// As soon as we need another API (GRPC, GraphQL, etc), we can:
+// 1. Create an interface for it
+// 2. Create a factory function that returns an instance of the interface
+// 3. Replace all references to ApiServer with the interface
+// 4. Replace the factory function with a switch statement that returns the appropriate instance
+// 5. Replace the NewApiServer call with a call to the factory function
+
+type ApiServer struct {
 	ctx    context.Context
 	config config.Config
-	mq     mqtt.Client
 	store  store.Storer
 }
 
-func NewLogServer(ctx context.Context, config config.Config) *LogServer {
-	l := &LogServer{
+func NewApiServer(ctx context.Context, config config.Config) *ApiServer {
+	l := &ApiServer{
 		ctx:    ctx,
 		config: config,
 	}
 
 	// Initialize database
-	var err error
-	err = store.Load(ctx, config, &l.store)
+	err := store.Load(ctx, config, &l.store)
 	if err != nil {
 		log.Fatalf("Can't configure database %e", err)
-	}
-
-	// Inititalize message queue
-	l.mq, err = l.newMqClient()
-	if err != nil {
-		log.Fatalf("Can't configure mqtt client %e", err)
 	}
 
 	return l
 }
 
-func (l *LogServer) Start() error {
+func (l *ApiServer) Start() error {
 	httpServer := &http.Server{
 		Addr:              l.config.BindAddr,
 		Handler:           l.router(),
@@ -69,7 +67,7 @@ func (l *LogServer) Start() error {
 	return nil
 }
 
-func (l *LogServer) router() http.Handler {
+func (l *ApiServer) router() http.Handler {
 	router := chi.NewRouter()
 
 	router.Get("/api/v1/check", l.HandleCheck)
@@ -106,7 +104,7 @@ func (l *LogServer) router() http.Handler {
 	return router
 }
 
-func (l *LogServer) HandleCheck(w http.ResponseWriter, r *http.Request) {
+func (l *ApiServer) HandleCheck(w http.ResponseWriter, r *http.Request) {
 	log.Printf("GET /api/v1/check")
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
