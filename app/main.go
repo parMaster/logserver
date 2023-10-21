@@ -2,28 +2,30 @@ package main
 
 import (
 	"context"
-	"flag"
 	"log"
 	"os"
 	"os/signal"
 	"syscall"
 
 	"github.com/go-pkgz/lgr"
+
 	"github.com/parMaster/logserver/app/server"
 	"github.com/parMaster/logserver/app/store"
 	"github.com/parMaster/logserver/config"
+	"github.com/umputun/go-flags"
 )
 
-var (
-	configPath string
-	cmd        string
-)
+var Options struct {
+	Config string `long:"config" env:"CONFIG" default:"config/logserver.toml" description:"toml config file name"`
+	Cmd    string `long:"cmd" env:"CMD" description:"command to run (server, migrate)"`
+}
 
 func main() {
-	flag.StringVar(&cmd, "cmd", "", "command to run (server, migrate)")
-	flag.StringVar(&configPath, "config", "config/logserver.toml", "path to config file")
-	flag.Parse()
-	config, err := config.NewConfig(configPath)
+	if _, err := flags.Parse(&Options); err != nil {
+		os.Exit(1)
+	}
+
+	config, err := config.NewConfig(Options.Config)
 	if err != nil {
 		log.Fatalf("error loading config: %e", err)
 	}
@@ -49,7 +51,7 @@ func main() {
 		cancel()
 	}()
 
-	switch cmd {
+	switch Options.Cmd {
 	case "migrate":
 		store.Migrate(ctx)
 	case "server":

@@ -45,5 +45,10 @@ remove:
 	sudo rm /etc/logserver -rf
 	sudo rm /etc/systemd/system/logserver.service
 
+stop:
+	sudo systemctl stop logserver.service
+
+start:
+	sudo systemctl start logserver.service
 
 .DEFAULT_GOAL: build

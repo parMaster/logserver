@@ -2,12 +2,24 @@ package store
 
 import (
 	"context"
+	"fmt"
 	"log"
+	"os"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 )
+
+func tempDir() string {
+
+	if os.Getenv("TEMP_DIR") != "" {
+		return os.Getenv("TEMP_DIR")
+	}
+
+	// os.TempDir() is "/tmp" on Linux - no trailing slash
+	return os.TempDir()
+}
 
 func Test_Sqlite_Store(t *testing.T) {
 
@@ -15,7 +27,7 @@ func Test_Sqlite_Store(t *testing.T) {
 	defer cancel()
 
 	var err error
-	store, err := NewSQLite(ctx, "file:/tmp/test.db?cache=shared&mode=rwc")
+	store, err := NewSQLite(ctx, fmt.Sprintf("file:%s/test.db?cache=shared&mode=rwc", tempDir()))
 	if err != nil {
 		log.Printf("[ERROR] Failed to open SQLite storage: %e", err)
 	}
@@ -85,7 +97,7 @@ func Test_SqliteStorage_View(t *testing.T) {
 	defer cancel()
 
 	var err error
-	store, err := NewSQLite(ctx, "file:/tmp/test_view.db?mode=rwc")
+	store, err := NewSQLite(ctx, fmt.Sprintf("file:%s/test_view.db?mode=rwc", tempDir()))
 	if err != nil {
 		log.Printf("[ERROR] Failed to open SQLite storage: %e", err)
 	}
@@ -131,7 +143,7 @@ func Test_SqliteStorage_readOnly(t *testing.T) {
 	defer cancel()
 
 	var err error
-	store, err := NewSQLite(ctx, "file:/tmp/test_view.db?mode=ro")
+	store, err := NewSQLite(ctx, fmt.Sprintf("file:%s/test_view.db?mode=ro", tempDir()))
 	if err != nil {
 		log.Printf("[ERROR] Failed to open SQLite storage: %e", err)
 	}

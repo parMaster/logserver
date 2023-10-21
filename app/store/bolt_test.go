@@ -31,14 +31,14 @@ func Test_Bolt_Store(t *testing.T) {
 
 	ctx := context.Background()
 
-	s, err := NewBolt(ctx, "/tmp/test.bolt")
+	s, err := NewBolt(ctx, tempDir()+"/test.bolt")
 	assert.NoError(t, err)
 
 	s.CleanUp()
 
 	testData := Data{
 		Module:   "TestModuleName",
-		DateTime: "2022-01-02 03:04:05",
+		DateTime: time.Now().Format("2006-01-02 15:04"),
 		Topic:    "TestTopicString",
 		Value:    "TestValueString",
 	}
@@ -92,14 +92,11 @@ func Test_Bolt_Store(t *testing.T) {
 }
 
 /*
-DB_FILE=/mnt/ramdisk/test.bolt go test -v  -run ^TestWrite$
+TEMP_DIR=/mnt/ramdisk go test -v  -run ^TestWrite$
 */
 func TestWrite(t *testing.T) {
 
-	filename := "/tmp/test.bolt"
-	if os.Getenv("DB_FILE") != "" {
-		filename = os.Getenv("DB_FILE")
-	}
+	filename := tempDir() + "/test.bolt"
 
 	// Kinda benchmark
 	ctx := context.Background()
@@ -107,31 +104,33 @@ func TestWrite(t *testing.T) {
 	assert.NoError(t, err)
 	s.CleanUp()
 
-	log.Printf("[INFO] Writing 1000 records")
-	for i := 0; i < 1000; i++ {
+	N := 100
+	log.Printf("[INFO] Writing %d records", N)
+	for i := 0; i < N; i++ {
 		s.Write(Data{Module: "bench_write", DateTime: time.Now().Format("2006-01-02 15:04:05.999999999"), Topic: fmt.Sprintf("topic %d", rand.Uint64()), Value: fmt.Sprintf("value %d", rand.Uint64())})
 	}
 	log.Printf("[INFO] Done")
 
-	log.Printf("[INFO] Reading 100 times")
-	for i := 0; i < 100; i++ {
+	N = 20
+	log.Printf("[INFO] Reading %d times with %d writes every time", N, N)
+	for i := 0; i < N; i++ {
 		data, err := s.Read("bench_write")
 		assert.NoError(t, err)
 		assert.NotEmpty(t, data)
+		for j := 0; j < N; j++ {
+			s.Write(Data{Module: "bench_write", DateTime: time.Now().Format("2006-01-02 15:04:05.999999999"), Topic: fmt.Sprintf("topic %d", rand.Uint64()), Value: fmt.Sprintf("value %d", rand.Uint64())})
+		}
 	}
 	log.Printf("[INFO] Done")
 
 }
 
 /*
-DB_FILE=/mnt/ramdisk/test.bolt go test -v  -run ^TestParallelWrite$
+TEMP_DIR=/mnt/ramdisk go test -v  -run ^TestParallelWrite$
 */
 func TestParallelWrite(t *testing.T) {
 
-	filename := "/tmp/test.bolt"
-	if os.Getenv("DB_FILE") != "" {
-		filename = os.Getenv("DB_FILE")
-	}
+	filename := tempDir() + "/test.bolt"
 
 	ctx := context.Background()
 	s, err := NewBolt(ctx, filename+time.Now().Format("20060102_150405.999999999"))
