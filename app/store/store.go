@@ -6,7 +6,7 @@ import (
 	"fmt"
 
 	log "github.com/go-pkgz/lgr"
-	"github.com/parMaster/logserver/config"
+	"github.com/parMaster/logserver/app/config"
 )
 
 var (

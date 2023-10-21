@@ -10,9 +10,9 @@ import (
 
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"github.com/go-chi/chi/v5"
+	"github.com/parMaster/logserver/app/config"
 	"github.com/parMaster/logserver/app/store"
 	"github.com/parMaster/logserver/app/web"
-	"github.com/parMaster/logserver/config"
 )
 
 type LogServer struct {

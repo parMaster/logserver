@@ -9,14 +9,14 @@ import (
 
 	"github.com/go-pkgz/lgr"
 
+	"github.com/parMaster/logserver/app/config"
 	"github.com/parMaster/logserver/app/server"
 	"github.com/parMaster/logserver/app/store"
-	"github.com/parMaster/logserver/config"
 	"github.com/umputun/go-flags"
 )
 
 var Options struct {
-	Config string `long:"config" env:"CONFIG" default:"config/logserver.toml" description:"toml config file name"`
+	Config string `long:"config" env:"CONFIG" default:"logserver.toml" description:"toml config file name"`
 	Cmd    string `long:"cmd" env:"CMD" description:"command to run (server, migrate)"`
 }
 

@@ -30,7 +30,7 @@ deploy: build
 	sudo cp logserver.service /etc/systemd/system/
 	sudo mkdir -p /etc/logserver
 	sudo chown ${USER}:${GROUP} /etc/logserver
-	sudo cp config/logserver.toml /etc/logserver/
+	sudo cp logserver.toml /etc/logserver/
 	sudo systemctl daemon-reload
 	sudo systemctl enable logserver.service
 	sudo systemctl start logserver.service
