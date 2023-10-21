@@ -13,9 +13,8 @@ import (
 
 // Bolt is a storage implementation (Storer Interface) that uses BoltDB as a backend.
 type Bolt struct {
-	db            *bolt.DB
-	ctx           context.Context
-	activeModules map[string]bool
+	db  *bolt.DB
+	ctx context.Context
 }
 
 func NewBolt(ctx context.Context, dbFile string) (b *Bolt, err error) {
@@ -30,7 +29,7 @@ func NewBolt(ctx context.Context, dbFile string) (b *Bolt, err error) {
 		db.Close()
 	}()
 
-	return &Bolt{db: db, ctx: ctx, activeModules: make(map[string]bool)}, nil
+	return &Bolt{db: db, ctx: ctx}, nil
 }
 
 func (b *Bolt) Read(module string) ([]Data, error) {
@@ -65,10 +64,6 @@ func (b *Bolt) Read(module string) ([]Data, error) {
 
 func (b *Bolt) Write(data Data) error {
 
-	if ok, err := b.moduleActive(data.Module); err != nil || !ok {
-		return fmt.Errorf("module %s is not active, possible activation error: %e", data.Module, err)
-	}
-
 	if data.DateTime == "" {
 		data.DateTime = time.Now().Format("2006-01-02 15:04")
 	}
@@ -78,9 +73,10 @@ func (b *Bolt) Write(data Data) error {
 	}
 
 	err := b.db.Update(func(tx *bolt.Tx) error {
-		b := tx.Bucket([]byte(data.Module))
-		if b == nil {
-			return fmt.Errorf("bucket %q not found", data.Module)
+
+		b, err := tx.CreateBucketIfNotExists([]byte(data.Module))
+		if err != nil {
+			return fmt.Errorf("create bucket: %s", err)
 		}
 
 		jdata, jerr := json.Marshal(Data{Topic: data.Topic, DateTime: data.DateTime, Value: data.Value})
@@ -119,37 +115,6 @@ func (b *Bolt) View(module string) (data map[string]map[string]string, err error
 	}
 
 	return
-}
-
-// Check if the table exists, create if not. Cache the result in the map
-func (b *Bolt) moduleActive(module string) (bool, error) {
-
-	if module == "" {
-		return false, fmt.Errorf("module name is empty")
-	}
-
-	if b.activeModules[module] {
-		return true, nil
-	}
-
-	if _, ok := b.activeModules[module]; !ok {
-
-		// create a bucket for the module
-		err := b.db.Update(func(tx *bolt.Tx) error {
-			_, err := tx.CreateBucketIfNotExists([]byte(module))
-			if err != nil {
-				return fmt.Errorf("create bucket: %s", err)
-			}
-			return nil
-		})
-		if err != nil {
-			return false, err
-		}
-		b.activeModules[module] = true
-		log.Printf("[DEBUG] BoltDB bucket created: %s", module)
-	}
-
-	return true, nil
 }
 
 // CleanUp removes all the data from the storage
