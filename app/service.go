@@ -32,14 +32,16 @@ func RunService(ctx context.Context, config config.Config) {
 	// Describe subscriptions
 	var subs []queue.Subscription
 	subs = append(subs, queue.Subscription{
-		Topic:   "croco/cave/#",
-		Handler: s.crocoCaveLogs,
+		Topic:    "croco/cave/#",
+		Handler:  s.crocoCaveLogs, // either Handler or Messages channel can be used
+		Messages: make(chan queue.Message, 10),
 	})
 
 	if config.CollectRaw {
 		subs = append(subs, queue.Subscription{
-			Topic:   "ESP32-A473F53A7D80/p/ds18b20/#",
-			Handler: s.crocoCaveRaw,
+			Topic:    "ESP32-A473F53A7D80/p/ds18b20/#",
+			Handler:  s.crocoCaveRaw, // either Handler or Messages channel can be used
+			Messages: make(chan queue.Message, 10),
 		})
 	}
 
@@ -47,6 +49,22 @@ func RunService(ctx context.Context, config config.Config) {
 	s.q, err = queue.NewClient(ctx, config, subs...)
 	if err != nil {
 		log.Fatalf("Can't configure mqtt client %e", err)
+	}
+
+	// Start consuming messages
+	// Either Handler or Messages channels with consumer goroutine like this can be used
+	for _, sub := range subs {
+		log.Printf("[INFO] Subscribed to channel on %s", sub.Topic)
+		go func(sub queue.Subscription) {
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case m := <-sub.Messages:
+					sub.Handler(m.Topic, m.Payload)
+				}
+			}
+		}(sub)
 	}
 
 	<-ctx.Done()

@@ -16,10 +16,18 @@ import (
 // 4. Replace the factory function with a switch statement that returns the appropriate instance
 // 5. Replace the mqtt.NewClient call with a call to the factory function
 
-type Subscription struct {
-	Topic   string // topic to subscribe to (e.g. "croco/cave/#")
-	Handler func(topic, payload string)
+// Message represents a message from mqtt queue in strings
+type Message struct {
+	Topic   string
+	Payload string
 }
+
+type Subscription struct {
+	Topic    string                      // topic to subscribe to (e.g. "croco/cave/#")
+	Handler  func(topic, payload string) // handler function to process message
+	Messages chan Message                // channel to consume messages from
+}
+
 type Client struct {
 	mqtt.Client
 	subs []Subscription
@@ -48,10 +56,15 @@ func NewClient(ctx context.Context, config config.Config, subs ...Subscription) 
 	opts.SetOnConnectHandler(func(c mqtt.Client) {
 		log.Printf("[INFO] Connected to mqtt broker %s as %s", config.MqBrokerURL, config.MqClientId)
 
-		for _, sub := range subs {
+		for i, sub := range subs {
 			if token := c.Subscribe(sub.Topic, 0, func(c mqtt.Client, m mqtt.Message) {
-				// log.Printf("[DEBUG] Received message from %s: %s", m.Topic(), m.Payload())
-				sub.Handler(m.Topic(), string(m.Payload()))
+				// either Handler or Messages channel can be used
+				// if sub.Handler != nil {
+				// 	sub.Handler(m.Topic(), string(m.Payload()))
+				// }
+				if sub.Messages != nil {
+					subs[i].Messages <- Message{Topic: m.Topic(), Payload: string(m.Payload())}
+				}
 			}); token.Wait() && token.Error() != nil {
 				log.Printf("[ERROR] failed to subscribe to topic %s: %s", sub.Topic, token.Error())
 			}
