@@ -10,14 +10,14 @@ GROUP=$(shell id -gn)
 
 .PHONY: build run test deploy status remove
 build:
-	- cd app; go build -v -o ../logserver; cd ..
+	- cd app && go build -v -o ../logserver
 	- make info
 
 run: build
 	- ./logserver
 
 test:
-	go test -v ./...
+	go test -v -race -mod=vendor ./...
 
 info:
 	- @echo "revision $(REV)"
