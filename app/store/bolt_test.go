@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/rand"
 	"os"
+	"path"
 	"sync"
 	"testing"
 	"time"
@@ -31,7 +32,7 @@ func Test_Bolt_Store(t *testing.T) {
 
 	ctx := context.Background()
 
-	s, err := NewBolt(ctx, tempDir()+"/test.bolt")
+	s, err := NewBolt(ctx, path.Join(tempDir(), "test.bolt"))
 	assert.NoError(t, err)
 
 	s.CleanUp()
@@ -96,7 +97,7 @@ TEMP_DIR=/mnt/ramdisk go test -v  -run ^TestWrite$
 */
 func TestWrite(t *testing.T) {
 
-	filename := tempDir() + "/test.bolt"
+	filename := path.Join(tempDir(), "test.bolt")
 
 	// Kinda benchmark
 	ctx := context.Background()
