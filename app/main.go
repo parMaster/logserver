@@ -22,7 +22,7 @@ var Options struct {
 
 func main() {
 	if _, err := flags.Parse(&Options); err != nil {
-		os.Exit(1)
+		log.Fatalf("error parsing flags: %e", err)
 	}
 
 	config, err := config.NewConfig(Options.Config)
@@ -38,17 +38,18 @@ func main() {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	go func() {
-		if x := recover(); x != nil {
-			log.Printf("[WARN] run time panic:\n%v", x)
-			panic(x)
-		}
-
 		// catch signal and invoke graceful termination
 		stop := make(chan os.Signal, 1)
 		signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
 		<-stop
 		log.Println("Shutdown signal received\n*********************************")
 		cancel()
+	}()
+
+	defer func() {
+		if x := recover(); x != nil {
+			log.Printf("[WARN] run time panic: %+v", x)
+		}
 	}()
 
 	switch Options.Cmd {
