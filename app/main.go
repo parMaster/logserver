@@ -16,8 +16,9 @@ import (
 )
 
 var Options struct {
-	Config string `long:"config" env:"CONFIG" default:"logserver.toml" description:"toml config file name"`
+	Config string `long:"config" env:"CONFIG" default:"config.yml" description:"YAML config file name"`
 	Cmd    string `long:"cmd" env:"CMD" description:"command to run (server, migrate)"`
+	Dbg    bool   `long:"dbg" env:"DBG" description:"debug mode, overrides config Serve.Dbg"`
 }
 
 func main() {
@@ -31,8 +32,8 @@ func main() {
 	}
 
 	logOpts := []lgr.Option{lgr.LevelBraces, lgr.StackTraceOnError}
-	if config.LogLevel == "debug" {
-		logOpts = append(logOpts, lgr.Debug)
+	if Options.Dbg || config.Server.Dbg {
+		logOpts = append(logOpts, lgr.Debug, lgr.Format(lgr.ShortDebug))
 	}
 	lgr.SetupStdLogger(logOpts...)
 

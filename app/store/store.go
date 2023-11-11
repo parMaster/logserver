@@ -32,14 +32,14 @@ type Storer interface {
 
 func Load(ctx context.Context, cfg config.Config, s *Storer) error {
 	var err error
-	switch cfg.DatabaseKind {
+	switch cfg.Storage.Type {
 	case "bolt":
-		*s, err = NewBolt(ctx, cfg.DatabaseURL)
+		*s, err = NewBolt(ctx, cfg.Storage.Path)
 		if err != nil {
 			return fmt.Errorf("failed to init SQLite storage: %e", err)
 		}
 	case "sqlite":
-		*s, err = NewSQLite(ctx, cfg.DatabaseURL)
+		*s, err = NewSQLite(ctx, cfg.Storage.Path)
 		if err != nil {
 			return fmt.Errorf("failed to init SQLite storage: %e", err)
 		}
@@ -47,7 +47,7 @@ func Load(ctx context.Context, cfg config.Config, s *Storer) error {
 		log.Printf("[DEBUG] Storage is not configured")
 		return errors.New("storage is not configured")
 	default:
-		return fmt.Errorf("storage type %s is not supported", cfg.DatabaseKind)
+		return fmt.Errorf("storage type %s is not supported", cfg.Storage.Type)
 	}
 	return err
 }

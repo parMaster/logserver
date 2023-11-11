@@ -11,13 +11,14 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+// Returns system temp dir (i.e. /tmp on Linux, no trailing slash).
+// If TEMP_DIR environment variable is set, it is returned instead
 func tempDir() string {
 
 	if os.Getenv("TEMP_DIR") != "" {
 		return os.Getenv("TEMP_DIR")
 	}
 
-	// os.TempDir() is "/tmp" on Linux - no trailing slash
 	return os.TempDir()
 }
 

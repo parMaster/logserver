@@ -36,10 +36,10 @@ type Client struct {
 // NewClient creates a new mqtt client and subscribes to the given topics
 func NewClient(ctx context.Context, config config.Config, subs ...Subscription) (*Client, error) {
 
-	opts := mqtt.NewClientOptions().AddBroker(config.MqBrokerURL)
-	opts.SetUsername(config.MqUser)
-	opts.SetPassword(config.MqPassword)
-	opts.SetClientID(config.MqClientId)
+	opts := mqtt.NewClientOptions().AddBroker(config.Mqtt.MqBrokerURL)
+	opts.SetUsername(config.Mqtt.MqUser)
+	opts.SetPassword(config.Mqtt.MqPassword)
+	opts.SetClientID(config.Mqtt.MqClientId)
 	opts.SetCleanSession(true)
 	opts.SetAutoReconnect(true)
 	opts.SetMaxReconnectInterval(1 * time.Second)
@@ -50,11 +50,11 @@ func NewClient(ctx context.Context, config config.Config, subs ...Subscription) 
 	})
 
 	opts.SetReconnectingHandler(func(c mqtt.Client, opts *mqtt.ClientOptions) {
-		log.Printf("[INFO] Reconnecting to mqtt broker %s as %s", config.MqBrokerURL, config.MqClientId)
+		log.Printf("[INFO] Reconnecting to mqtt broker %s as %s", config.Mqtt.MqBrokerURL, config.Mqtt.MqClientId)
 	})
 
 	opts.SetOnConnectHandler(func(c mqtt.Client) {
-		log.Printf("[INFO] Connected to mqtt broker %s as %s", config.MqBrokerURL, config.MqClientId)
+		log.Printf("[INFO] Connected to mqtt broker %s as %s", config.Mqtt.MqBrokerURL, config.Mqtt.MqClientId)
 
 		for i, sub := range subs {
 			if token := c.Subscribe(sub.Topic, 0, func(c mqtt.Client, m mqtt.Message) {

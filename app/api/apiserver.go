@@ -44,14 +44,14 @@ func NewApiServer(ctx context.Context, config config.Config) *ApiServer {
 
 func (l *ApiServer) Start() error {
 	httpServer := &http.Server{
-		Addr:              l.config.BindAddr,
+		Addr:              l.config.Server.BindAddr,
 		Handler:           l.router(),
 		ReadHeaderTimeout: time.Second,
 		WriteTimeout:      30 * time.Second,
 		IdleTimeout:       time.Second,
 	}
 
-	log.Printf("[INFO] Starting http server on %s", l.config.BindAddr)
+	log.Printf("[INFO] Starting http server on %s", l.config.Server.BindAddr)
 
 	go func() {
 		<-l.ctx.Done()
