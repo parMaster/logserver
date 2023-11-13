@@ -1,5 +1,3 @@
-# github.com/BurntSushi/toml v1.3.2
-## explicit
 # github.com/davecgh/go-spew v1.1.1
 ## explicit
 github.com/davecgh/go-spew/spew
@@ -16,6 +14,9 @@ github.com/go-pkgz/lgr
 # github.com/gorilla/websocket v1.5.0
 ## explicit; go 1.12
 github.com/gorilla/websocket
+# github.com/jessevdk/go-flags v1.5.0
+## explicit; go 1.15
+github.com/jessevdk/go-flags
 # github.com/lib/pq v1.10.9
 ## explicit; go 1.13
 github.com/lib/pq
@@ -30,9 +31,6 @@ github.com/pmezard/go-difflib/difflib
 # github.com/stretchr/testify v1.8.4
 ## explicit; go 1.20
 github.com/stretchr/testify/assert
-# github.com/umputun/go-flags v1.5.1
-## explicit; go 1.12
-github.com/umputun/go-flags
 # go.etcd.io/bbolt v1.3.7
 ## explicit; go 1.17
 go.etcd.io/bbolt

@@ -9,10 +9,10 @@ import (
 
 	"github.com/go-pkgz/lgr"
 
+	"github.com/jessevdk/go-flags"
 	"github.com/parMaster/logserver/app/api"
 	"github.com/parMaster/logserver/app/config"
 	"github.com/parMaster/logserver/app/store"
-	"github.com/umputun/go-flags"
 )
 
 var Options struct {
