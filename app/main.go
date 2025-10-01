@@ -15,24 +15,25 @@ import (
 	"github.com/parMaster/logserver/app/store"
 )
 
-var Options struct {
+type Options struct {
 	Config string `long:"config" env:"CONFIG" default:"config.yml" description:"YAML config file name"`
 	Cmd    string `long:"cmd" env:"CMD" description:"command to run (server, migrate)"`
 	Dbg    bool   `long:"dbg" env:"DBG" description:"debug mode, overrides config Serve.Dbg"`
 }
 
 func main() {
-	if _, err := flags.Parse(&Options); err != nil {
+	var opts Options
+	if _, err := flags.Parse(&opts); err != nil {
 		log.Fatalf("error parsing flags: %e", err)
 	}
 
-	config, err := config.NewConfig(Options.Config)
+	config, err := config.NewConfig(opts.Config)
 	if err != nil {
 		log.Fatalf("error loading config: %e", err)
 	}
 
 	logOpts := []lgr.Option{lgr.LevelBraces, lgr.StackTraceOnError}
-	if Options.Dbg || config.Server.Dbg {
+	if opts.Dbg || config.Server.Dbg {
 		logOpts = append(logOpts, lgr.Debug, lgr.Format(lgr.ShortDebug))
 	}
 	lgr.SetupStdLogger(logOpts...)
@@ -53,7 +54,7 @@ func main() {
 		}
 	}()
 
-	switch Options.Cmd {
+	switch opts.Cmd {
 	case "migrate":
 		store.Migrate(ctx)
 	case "service":

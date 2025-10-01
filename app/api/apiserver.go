@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/go-chi/chi/v5"
+	"github.com/go-pkgz/routegroup"
 	"github.com/parMaster/logserver/app/config"
 	"github.com/parMaster/logserver/app/store"
 	"github.com/parMaster/logserver/app/web"
@@ -68,24 +68,26 @@ func (l *ApiServer) Start() error {
 }
 
 func (l *ApiServer) router() http.Handler {
-	router := chi.NewRouter()
 
-	router.Get("/api/v1/check", l.HandleCheck)
+	mux := http.NewServeMux()
+	router := routegroup.New(mux)
 
-	router.Get("/web/chart_tpl.min.js", func(rw http.ResponseWriter, r *http.Request) {
+	router.HandleFunc("GET /api/v1/check", l.HandleCheck)
+
+	router.HandleFunc("GET /web/chart_tpl.min.js", func(rw http.ResponseWriter, r *http.Request) {
 		rw.Write([]byte(web.Chart_tpl_min_js))
 	})
 
-	router.Get("/view", func(rw http.ResponseWriter, r *http.Request) {
+	router.HandleFunc("GET /view", func(rw http.ResponseWriter, r *http.Request) {
 		rw.Write([]byte(web.View_html))
 	})
 
-	router.Get("/viewData/{module}", func(rw http.ResponseWriter, r *http.Request) {
+	router.HandleFunc("GET /viewData/{module}", func(rw http.ResponseWriter, r *http.Request) {
 		if l.store == nil {
 			rw.WriteHeader(http.StatusServiceUnavailable)
 			return
 		}
-		module := chi.URLParam(r, "module")
+		module := r.PathValue("module")
 		if module == "" {
 			rw.WriteHeader(http.StatusBadRequest)
 			return
